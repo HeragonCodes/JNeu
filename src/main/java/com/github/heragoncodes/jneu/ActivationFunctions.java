@@ -1,4 +1,4 @@
-package com.HeragonCodes.JNeu;
+package com.github.heragoncodes.jneu;
 
 
 import org.ejml.data.DMatrixRMaj;
