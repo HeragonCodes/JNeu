@@ -1,3 +1,5 @@
+package com.HeragonCodes.JNeu;
+
 import org.ejml.data.DMatrixRMaj;
 import org.ejml.dense.row.RandomMatrices_DDRM;
 

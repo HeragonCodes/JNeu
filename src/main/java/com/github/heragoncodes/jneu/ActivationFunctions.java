@@ -1,3 +1,6 @@
+package com.HeragonCodes.JNeu;
+
+
 import org.ejml.data.DMatrixRMaj;
 
 public class ActivationFunctions {

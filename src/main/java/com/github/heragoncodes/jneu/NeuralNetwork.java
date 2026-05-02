@@ -1,3 +1,6 @@
+package com.heragoncodes.jneu
+
+
 import org.ejml.data.DMatrixRMaj;
 
 import java.io.Serializable;

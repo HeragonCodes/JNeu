@@ -1,3 +1,6 @@
+package com.HeragonCodes.JNeu;
+
+
 import org.ejml.data.DMatrixRMaj;
 import org.ejml.dense.row.CommonOps_DDRM;
 import org.ejml.dense.row.mult.MatrixVectorMult_DDRM;
