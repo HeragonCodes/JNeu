@@ -1,4 +1,4 @@
-package com.HeragonCodes.JNeu;
+package com.github.heragoncodes.jneu;
 
 import java.io.Serializable;
 import java.util.function.DoubleUnaryOperator;

@@ -1,4 +1,4 @@
-package com.HeragonCodes.JNeu;
+package com.github.heragoncodes.jneu;
 
 
 import org.ejml.data.DMatrixRMaj;
@@ -15,8 +15,9 @@ public class Layer implements Serializable {
     private final DMatrixRMaj weights;
     private final DMatrixRMaj biases;
 
-    private final DMatrixRMaj lastInput;
+    private DMatrixRMaj lastInput;
     private final DMatrixRMaj lastOutput;
+    private final DMatrixRMaj lastZ;
 
     private Act function;
     private CustomFunction customActivation = null;
@@ -41,6 +42,7 @@ public class Layer implements Serializable {
 
         this.lastInput = new DMatrixRMaj(weights.getNumCols(), 1);
         this.lastOutput = new DMatrixRMaj(weights.getNumRows(), 1);
+        this.lastZ = new DMatrixRMaj(weights.getNumRows(), 1);
 
         this.function = function;
     }
@@ -57,35 +59,37 @@ public class Layer implements Serializable {
         this.customActivation = customFunction;
     }
 
-    public void forwardPass(){
+    public void forwardPass(DMatrixRMaj inputVector){
+        lastInput.setTo(inputVector);
         MatrixVectorMult_DDRM.mult(weights, lastInput, lastOutput);
         CommonOps_DDRM.addEquals(lastOutput, biases);
+        lastZ.setTo(lastOutput);
         switch (function) {
-            case RELU -> ActivationFunctions.applyReLU(lastOutput);
-            case LEAKY_RELU -> ActivationFunctions.applyLeakyReLU(lastOutput);
-            case SIGMOID -> ActivationFunctions.applySigmoid(lastOutput);
+            case RELU -> lastOutput.setTo(ActivationFunctions.applyReLU(lastOutput));
+            case LEAKY_RELU -> lastOutput.setTo(ActivationFunctions.applyLeakyReLU(lastOutput));
+            case SIGMOID -> lastOutput.setTo(ActivationFunctions.applySigmoid(lastOutput));
             case CUSTOM -> {
                 if (customActivation == null) {
                     throw new IllegalStateException("Custom activation function is null!");
                 }
-                ActivationFunctions.applyCustom(lastOutput, customActivation);
+                lastOutput.setTo(ActivationFunctions.applyCustom(lastOutput, customActivation));
             }
         }
     }
     public DMatrixRMaj backwardPass(DMatrixRMaj dLoss){
-        DMatrixRMaj delta = lastOutput.copy();
+        DMatrixRMaj delta;
         switch (function) {
-            case RELU -> ActivationFunctions.deriveReLU(delta);
-            case LEAKY_RELU -> ActivationFunctions.deriveLeakyReLU(delta);
-            case SIGMOID -> ActivationFunctions.deriveSigmoid(delta);
+            case RELU -> delta = ActivationFunctions.deriveReLU(lastZ);
+            case LEAKY_RELU -> delta = ActivationFunctions.deriveLeakyReLU(lastZ);
+            case SIGMOID -> delta = ActivationFunctions.deriveSigmoid(lastZ);
             case CUSTOM -> {
                 if (customActivation == null) {
                     throw new IllegalStateException("Custom activation function is null!");
                 }
                 if (customDerivative == null) {
-                    ActivationFunctions.deriveCustom(delta, customActivation, false);
+                    delta = ActivationFunctions.deriveCustom(lastZ, customActivation, false);
                 } else {
-                    ActivationFunctions.deriveCustom(delta, customDerivative, true);
+                    delta = ActivationFunctions.deriveCustom(lastZ, customDerivative, true);
                 }
             }
             default -> throw new IllegalStateException("Unknown activation function");
@@ -122,10 +126,6 @@ public class Layer implements Serializable {
         CommonOps_DDRM.addEquals(weights, -learningRate, weightsGradient);
         CommonOps_DDRM.addEquals(biases, -learningRate, biasesGradient);
         zeroGradients();
-    }
-
-    public void setLastInput(DMatrixRMaj inputVector){
-        lastInput.setTo(inputVector);
     }
 
     public DMatrixRMaj getLastOutput(){return lastOutput;}

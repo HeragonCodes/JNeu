@@ -1,4 +1,4 @@
-package com.heragoncodes.jneu
+package com.github.heragoncodes.jneu;
 
 
 import org.ejml.data.DMatrixRMaj;
@@ -14,13 +14,14 @@ public class NeuralNetwork implements Serializable {
 
     private final List<Layer> allLayers;
     private LossFunctions.Loss lossFunction;
-
+    private CustomLoss customLoss = null;
+    private CustomLoss customLossDerivative = null;
     public NeuralNetwork(List<Layer> allLayers, LossFunctions.Loss function){
         this.allLayers = (allLayers != null) ? new ArrayList<>(allLayers) : new ArrayList<>();
         this.lossFunction = function;
     }
     public NeuralNetwork(List<Layer> allLayers){this(allLayers, LossFunctions.Loss.MEAN_SQUARED);}
-    public NeuralNetwork(){this.allLayers = new ArrayList<>();}
+    public NeuralNetwork(){this(new ArrayList<>());}
 
     public void add(Layer l){allLayers.add(l);}
     public void add(int index, Layer l){allLayers.add(index, l);}
@@ -30,13 +31,12 @@ public class NeuralNetwork implements Serializable {
     public DMatrixRMaj forwardPass(DMatrixRMaj inputVector){
         if (allLayers.isEmpty()) throw new IllegalStateException("Cannot run forward pass: network has no layers.");
         if (inputVector == null) throw new IllegalArgumentException("Input vector cannot be null.");
-        DMatrixRMaj vector = inputVector;
+        DMatrixRMaj currentInput = inputVector;
         for (Layer l : allLayers){
-            l.setLastInput(vector);
-            l.forwardPass();
-            vector = l.getLastOutput();
+            l.forwardPass(currentInput);
+            currentInput = l.getLastOutput();
         }
-        return vector;
+        return currentInput;
     }
     public void backPropagate(DMatrixRMaj expected){
         DMatrixRMaj inputError = null;
@@ -45,6 +45,14 @@ public class NeuralNetwork implements Serializable {
             case MEAN_ABSOLUTE -> inputError = LossFunctions.deriveMAE(getOutputLayer().getLastOutput(), expected);
             case CROSS_ENTROPY -> inputError = LossFunctions.deriveCE(getOutputLayer().getLastOutput(), expected);
             case BINARY_CROSS_ENTROPY -> inputError = LossFunctions.deriveBCE(getOutputLayer().getLastOutput(), expected);
+            case CUSTOM -> {
+                if (customLossDerivative != null){
+                    inputError = LossFunctions.deriveCustom(getOutputLayer().getLastOutput(), expected, customLossDerivative, true);
+                } else {
+                    inputError = LossFunctions.deriveCustom(getOutputLayer().getLastOutput(), expected, customLoss, false);
+                }
+
+            }
         }
         for (int i = allLayers.size()-1; i >= 0; i--) {
             inputError = getLayer(i).backwardPass(inputError);
@@ -53,7 +61,7 @@ public class NeuralNetwork implements Serializable {
 
     public void learn(DMatrixRMaj inputVector, DMatrixRMaj expected, boolean verboseLoss){
         DMatrixRMaj outputVector = forwardPass(inputVector);
-        if (verboseLoss) System.out.println(calculateLoss(outputVector, expected));
+        if (verboseLoss) System.out.println("Loss: " + calculateLoss(outputVector, expected));
         backPropagate(expected);
     }
     public void learn(DMatrixRMaj inputVector, DMatrixRMaj expected){
@@ -72,11 +80,20 @@ public class NeuralNetwork implements Serializable {
             case MEAN_ABSOLUTE -> {return LossFunctions.applyMAE(output, expected);}
             case CROSS_ENTROPY -> {return LossFunctions.applyCE(output, expected);}
             case BINARY_CROSS_ENTROPY -> {return LossFunctions.applyBCE(output, expected);}
+            case CUSTOM -> {return LossFunctions.applyCustom(output, expected, customLoss);}
         }
         throw new IllegalArgumentException("Specified loss function is inexistent");
     }
 
     public void setLossFunction(LossFunctions.Loss function){lossFunction = function;}
+    public void setCustomLoss(CustomLoss function, CustomLoss functionDerivative){
+        lossFunction = LossFunctions.Loss.CUSTOM;
+        customLoss = function;
+        customLossDerivative = functionDerivative;
+    }
+    public void setCustomLoss(CustomLoss function){
+        setCustomLoss(function, null);
+    }
 
     public Layer getLayer(int index){return allLayers.get(index);}
     public Layer getOutputLayer(){return allLayers.getLast();}

@@ -18,7 +18,8 @@
         <dependency>
             <groupId>org.ejml</groupId>
             <artifactId>ejml-all</artifactId>
-            <version>0.43.1</version> </dependency>
+            <version>0.43.1</version>
+        </dependency>
     </dependencies>
 
 </project>
